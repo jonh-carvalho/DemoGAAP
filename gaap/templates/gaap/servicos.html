@@ -1,0 +1,24 @@
+{% extends 'gaap/base.html' %}
+{% block content %}
+<div class="card">
+    <h2>Serviços</h2>
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Nome</th><th>Tipo</th><th>Duração</th><th>Capacidade</th></tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.id }}</td>
+                <td>{{ item.nome }}</td>
+                <td>{{ item.tipo }}</td>
+                <td>{{ item.duracao_minutos }} min</td>
+                <td>{{ item.capacidade_maxima }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5">Nenhum serviço cadastrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

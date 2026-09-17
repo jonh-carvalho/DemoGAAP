@@ -1,0 +1,25 @@
+{% extends 'gaap/base.html' %}
+{% block content %}
+<div class="card">
+    <h2>Agendamentos</h2>
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Aluno</th><th>Profissional</th><th>Serviço</th><th>Status</th><th>Início</th></tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.id }}</td>
+                <td>{{ item.aluno.nome|default:'-' }}</td>
+                <td>{{ item.profissional.nome|default:'-' }}</td>
+                <td>{{ item.servico.nome|default:'-' }}</td>
+                <td>{{ item.status }}</td>
+                <td>{{ item.inicio }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6">Nenhum agendamento para exibir.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

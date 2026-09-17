@@ -1,0 +1,52 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor Administrador
+actor Treinador
+actor ProfissionalSaude
+actor Aluno
+actor Responsavel
+
+rectangle GAAP {
+  usecase "Autenticar no sistema" as UC0
+  usecase "Manter usuários e perfis" as UC1
+  usecase "Cadastrar alunos" as UC2
+  usecase "Cadastrar profissionais" as UC3
+  usecase "Configurar agenda" as UC4
+  usecase "Criar bloqueios" as UC5
+  usecase "Consultar agenda" as UC6
+  usecase "Agendar atendimento" as UC7
+  usecase "Consultar agendamentos próprios" as UC8
+  usecase "Registrar presença" as UC9
+  usecase "Gerar relatório de treino" as UC10
+  usecase "Visualizar histórico do aluno" as UC11
+}
+
+Administrador --> UC0
+Administrador --> UC1
+Administrador --> UC2
+Administrador --> UC3
+Administrador --> UC4
+Administrador --> UC5
+Administrador --> UC6
+Administrador --> UC7
+
+Treinador --> UC0
+Treinador --> UC6
+Treinador --> UC9
+Treinador --> UC10
+Treinador --> UC11
+
+ProfissionalSaude --> UC0
+ProfissionalSaude --> UC6
+ProfissionalSaude --> UC9
+
+Aluno --> UC0
+Aluno --> UC8
+
+Responsavel --> UC0
+Responsavel --> UC7
+Responsavel --> UC8
+Responsavel --> UC11
+@enduml

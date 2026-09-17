@@ -1,0 +1,38 @@
+@startuml
+start
+:Usuário acessa sistema;
+:Autentica via JWT;
+if (Perfil válido?) then (sim)
+  if (Perfil = ADMINISTRADOR) then (sim)
+    :Gerencia usuários, serviços e bloqueios;
+  elseif (Perfil = RESPONSAVEL ou ALUNO) then (sim)
+    :Consulta agendamentos do aluno/responsável;
+    :Cria ou consulta atendimento;
+  elseif (Perfil = TREINADOR ou SAUDE) then (sim)
+    :Consulta agenda vinculada ao profissional;
+  endif
+
+  :Valida dados do agendamento;
+  :Verifica serviço, profissional e horário;
+  :Consulta bloqueios e capacidade;
+  if (Horário bloqueado ou capacidade excedida?) then (sim)
+    :Rejeita agendamento;
+  else (não)
+    if (Aluno ou profissional com conflito?) then (sim)
+      :Rejeita agendamento;
+    else (não)
+      :Cria agendamento;
+      :Registra autor e timestamp;
+    endif
+  endif
+
+  :Profissional ou treinador registra presença;
+  if (Presença = PRESENTE ou FALTA?) then (sim)
+    :Atualiza campo presenca;
+    :Cria relatório de treino, se necessário;
+  endif
+else (não)
+  :Retorna erro de autenticação/autorização;
+endif
+stop
+@enduml

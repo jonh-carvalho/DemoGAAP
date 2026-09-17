@@ -1,0 +1,110 @@
+@startuml
+skinparam classAttributeIconSize 0
+left to right direction
+
+class Usuario {
+  +id: int
+  +username: string
+  +email: string
+  +password: hash
+  +perfil: Perfil
+}
+
+class Perfil {
+  +id: int
+  +codigo: string
+  +nome: string
+}
+
+class Responsavel {
+  +id: int
+  +usuario: Usuario
+  +nome: string
+  +telefone: string
+  +email: string
+  +created_at: datetime
+}
+
+class Aluno {
+  +id: int
+  +usuario: Usuario
+  +nome: string
+  +data_nascimento: date
+  +responsavel: Responsavel
+}
+
+class Servico {
+  +id: int
+  +nome: string
+  +tipo: enum
+  +duracao_minutos: int
+  +capacidade_maxima: int
+  +ativo: bool
+}
+
+class Profissional {
+  +id: int
+  +usuario: Usuario
+  +nome: string
+  +especialidade: string
+  +ativo: bool
+}
+
+class RegraDisponibilidade {
+  +id: int
+  +servico: Servico
+  +profissional: Profissional
+  +dia_semana: string
+  +hora_inicio: time
+  +hora_fim: time
+}
+
+class BloqueioAgenda {
+  +id: int
+  +servico: Servico
+  +profissional: Profissional
+  +inicio: datetime
+  +fim: datetime
+  +motivo: string
+  +created_by: Usuario
+  +created_at: datetime
+}
+
+class Agendamento {
+  +id: int
+  +aluno: Aluno
+  +servico: Servico
+  +profissional: Profissional
+  +inicio: datetime
+  +fim: datetime
+  +status: enum
+  +presenca: enum
+  +observacoes: text
+  +created_by: Usuario
+  +created_at: datetime
+  +updated_at: datetime
+}
+
+class RelatorioTreino {
+  +id: int
+  +agendamento: Agendamento
+  +titulo: string
+  +conteudo: text
+  +created_by: Usuario
+  +created_at: datetime
+}
+
+Perfil "1" --> "0..*" Usuario
+Usuario "1" --> "0..1" Responsavel
+Usuario "1" --> "0..1" Aluno
+Usuario "1" --> "0..1" Profissional
+Responsavel "1" --> "0..*" Aluno
+Servico "1" --> "0..*" RegraDisponibilidade
+Profissional "1" --> "0..*" RegraDisponibilidade
+Servico "1" --> "0..*" BloqueioAgenda
+Profissional "1" --> "0..*" BloqueioAgenda
+Aluno "1" --> "0..*" Agendamento
+Servico "1" --> "0..*" Agendamento
+Profissional "1" --> "0..*" Agendamento
+Agendamento "1" --> "0..*" RelatorioTreino
+@enduml

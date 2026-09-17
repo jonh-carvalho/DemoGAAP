@@ -1,0 +1,107 @@
+@startuml
+entity perfil {
+  * id: bigint
+  --
+  codigo: varchar(30)
+  nome: varchar(100)
+}
+
+entity usuario {
+  * id: bigint
+  --
+  username: varchar(150)
+  email: varchar(254)
+  password: varchar(128)
+  perfil_id: bigint
+  first_name: varchar(150)
+  last_name: varchar(150)
+}
+
+entity responsavel {
+  * id: bigint
+  --
+  usuario_id: bigint null
+  nome: varchar(150)
+  telefone: varchar(20)
+  email: varchar(254)
+  created_at: datetime
+}
+
+entity aluno {
+  * id: bigint
+  --
+  usuario_id: bigint null
+  nome: varchar(150)
+  data_nascimento: date
+  responsavel_id: bigint
+}
+
+entity servico {
+  * id: bigint
+  --
+  nome: varchar(100)
+  tipo: varchar(30)
+  duracao_minutos: int
+  capacidade_maxima: int
+  ativo: bool
+}
+
+entity profissional {
+  * id: bigint
+  --
+  usuario_id: bigint
+  nome: varchar(150)
+  especialidade: varchar(100)
+  ativo: bool
+}
+
+entity bloqueio_agenda {
+  * id: bigint
+  --
+  servico_id: bigint null
+  profissional_id: bigint null
+  inicio: datetime
+  fim: datetime
+  motivo: varchar(255)
+  created_by_id: bigint
+  created_at: datetime
+}
+
+entity agendamento {
+  * id: bigint
+  --
+  aluno_id: bigint
+  servico_id: bigint
+  profissional_id: bigint
+  inicio: datetime
+  fim: datetime
+  status: varchar(20)
+  presenca: varchar(20)
+  observacoes: text
+  created_by_id: bigint
+  created_at: datetime
+  updated_at: datetime
+}
+
+entity relatorio_treino {
+  * id: bigint
+  --
+  agendamento_id: bigint
+  titulo: varchar(200)
+  conteudo: text
+  created_by_id: bigint
+  created_at: datetime
+}
+
+perfil ||--o{ usuario
+usuario ||--o| responsavel
+usuario ||--o| aluno
+usuario ||--o| profissional
+responsavel ||--o{ aluno
+servico ||--o{ bloqueio_agenda
+profissional ||--o{ bloqueio_agenda
+aluno ||--o{ agendamento
+servico ||--o{ agendamento
+profissional ||--o{ agendamento
+agendamento ||--o{ relatorio_treino
+@enduml

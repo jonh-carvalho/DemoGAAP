@@ -1,0 +1,44 @@
+{% extends 'gaap/base.html' %}
+{% block content %}
+<h2>Dashboard GAAP</h2>
+<div class="grid">
+    <div class="metric">
+        Usuários
+        <strong>{{ usuarios|length }}</strong>
+    </div>
+    <div class="metric">
+        Serviços
+        <strong>{{ servicos|length }}</strong>
+    </div>
+    <div class="metric">
+        Agendamentos
+        <strong>{{ agendamentos|length }}</strong>
+    </div>
+    <div class="metric">
+        Relatórios
+        <strong>{{ relatorios|length }}</strong>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Últimos agendamentos</h3>
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Aluno</th><th>Serviço</th><th>Status</th><th>Inicio</th></tr>
+        </thead>
+        <tbody>
+            {% for item in agendamentos %}
+            <tr>
+                <td>{{ item.id }}</td>
+                <td>{{ item.aluno.nome|default:'-' }}</td>
+                <td>{{ item.servico.nome|default:'-' }}</td>
+                <td class="status">{{ item.status }}</td>
+                <td>{{ item.inicio }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5">Nenhum agendamento encontrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

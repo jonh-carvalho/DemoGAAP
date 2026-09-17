@@ -1,0 +1,26 @@
+@startuml
+actor Responsavel as R
+participant API as API
+participant Agendamento as AG
+participant Servico as S
+participant Aluno as A
+participant Profissional as P
+participant BloqueioAgenda as B
+
+autonumber
+R -> API: POST /api/v1/agendamentos
+API -> API: valida autenticação e perfil
+API -> AG: cria entidade Agendamento
+AG -> A: valida vínculo do aluno com o responsável
+AG -> S: verifica serviço/tempo/capacidade
+AG -> AG: valida sobreposição para o aluno
+AG -> P: valida sobreposição para o profissional
+AG -> B: verifica bloqueios de agenda
+alt bloco de agenda ou conflito ou capacidade excedida
+  AG --> API: raises ValidationError
+  API --> R: 400 Bad Request
+else agendamento válido
+  AG --> API: persiste status=PENDENTE/CONFIRMADO
+  API --> R: 201 Created
+end
+@enduml
