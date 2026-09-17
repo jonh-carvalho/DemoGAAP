@@ -26,25 +26,30 @@ class Command(BaseCommand):
             username='admin',
             defaults={'email': 'admin@gaap.com', 'perfil': admin_perfil, 'is_staff': True, 'is_superuser': True},
         )
-        if not admin_user.has_usable_password():
-            admin_user.set_password('Senha123')
-            admin_user.save()
+        admin_user.perfil = admin_perfil
+        admin_user.is_staff = True
+        admin_user.is_superuser = True
+        admin_user.is_active = True
+        admin_user.set_password('Senha123')
+        admin_user.save()
 
         treinador_user, _ = Usuario.objects.get_or_create(
             username='treinador',
             defaults={'email': 'treinador@gaap.com', 'perfil': treinador_perfil},
         )
-        if not treinador_user.has_usable_password():
-            treinador_user.set_password('Senha123')
-            treinador_user.save()
+        treinador_user.perfil = treinador_perfil
+        treinador_user.is_active = True
+        treinador_user.set_password('Senha123')
+        treinador_user.save()
 
         profissional_user, _ = Usuario.objects.get_or_create(
             username='profissional',
             defaults={'email': 'profissional@gaap.com', 'perfil': saude_perfil},
         )
-        if not profissional_user.has_usable_password():
-            profissional_user.set_password('Senha123')
-            profissional_user.save()
+        profissional_user.perfil = saude_perfil
+        profissional_user.is_active = True
+        profissional_user.set_password('Senha123')
+        profissional_user.save()
 
         responsavel, _ = Responsavel.objects.get_or_create(
             nome='Maria da Silva',
