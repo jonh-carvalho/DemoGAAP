@@ -2,7 +2,9 @@ from datetime import datetime, timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.management import call_command
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from gaap.models import (
@@ -13,6 +15,7 @@ from gaap.models import (
     RelatorioTreino,
     Responsavel,
     Servico,
+    SolicitacaoExperimental,
 )
 
 User = get_user_model()
@@ -124,7 +127,7 @@ class GaapDomainTests(TestCase):
                 profissional=self.profissional,
                 inicio=inicio,
                 fim=fim,
-                status='CONFIRMADO',
+                status='PENDENTE',
                 created_by=self.admin_user,
             )
 
@@ -137,7 +140,7 @@ class GaapDomainTests(TestCase):
             profissional=self.profissional,
             inicio=inicio,
             fim=fim,
-            status='CONFIRMADO',
+            status='PENDENTE',
             created_by=self.admin_user,
         )
 
@@ -231,3 +234,89 @@ class GaapDomainTests(TestCase):
     def test_admin_deve_ser_requerido_para_criar_bloqueios(self):
         self.assertEqual(self.admin_perfil.codigo, 'ADMIN')
         self.assertEqual(self.treinador_perfil.codigo, 'TREINADOR')
+
+    def test_seed_cria_profissionais_e_servicos_sem_duplicar(self):
+        usernames = ['profissional_educacao_fisica', 'fisioterapeuta', 'psicologo']
+        nomes_servicos = ['Fisioterapia', 'Nutricionista', 'Psicologia']
+
+        call_command('seed_gaap')
+        call_command('seed_gaap')
+
+        self.assertEqual(Profissional.objects.filter(usuario__username__in=usernames).count(), 3)
+        self.assertEqual(Servico.objects.filter(nome__in=nomes_servicos).count(), 3)
+        self.assertEqual(
+            set(Profissional.objects.filter(usuario__username__in=usernames).values_list('especialidade', flat=True)),
+            {'Educação Física', 'Fisioterapia', 'Psicologia'},
+        )
+
+    def test_landing_publica_recebe_solicitacao_sem_criar_agendamento_ou_conta(self):
+        counts_before = (Aluno.objects.count(), Agendamento.objects.count(), User.objects.count())
+        response = self.client.get('/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Solicitar aula experimental')
+        self.assertContains(response, 'Selecione um período')
+
+        response = self.client.post('/', {
+            'nome_responsavel': 'Ana Silva',
+            'nome_atleta': 'Lucas Silva',
+            'idade_atleta': '16',
+            'telefone': '(21) 99999-1234',
+            'email': 'ana@example.com',
+            'periodo_preferido': 'TARDE',
+            'consentimento_contato': 'on',
+            'website': '',
+        })
+
+        self.assertRedirects(response, '/')
+        solicitacao = SolicitacaoExperimental.objects.get()
+        self.assertEqual(solicitacao.telefone, '21999991234')
+        self.assertEqual(solicitacao.modalidade, 'TREINO')
+        self.assertEqual(solicitacao.status, SolicitacaoExperimental.STATUS_NOVA)
+        self.assertIsNotNone(solicitacao.consentimento_em)
+        self.assertEqual(
+            (Aluno.objects.count(), Agendamento.objects.count(), User.objects.count()),
+            counts_before,
+        )
+
+    def test_solicitacao_exige_consentimento_e_dados_validos(self):
+        response = self.client.post('/', {
+            'nome_responsavel': 'Ana Silva',
+            'nome_atleta': 'Lucas Silva',
+            'idade_atleta': '16',
+            'telefone': '123',
+            'periodo_preferido': 'TARDE',
+            'website': '',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Precisamos da sua autorização para entrar em contato.')
+        self.assertContains(response, 'Informe um telefone com DDD e 10 ou 11 dígitos.')
+        self.assertEqual(SolicitacaoExperimental.objects.count(), 0)
+
+    def test_solicitacao_honeypot_bloqueia_envio_automatizado(self):
+        response = self.client.post('/', {
+            'nome_responsavel': 'Ana Silva',
+            'nome_atleta': 'Lucas Silva',
+            'idade_atleta': '16',
+            'telefone': '21999991234',
+            'periodo_preferido': 'TARDE',
+            'consentimento_contato': 'on',
+            'website': 'spam.example',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(SolicitacaoExperimental.objects.count(), 0)
+
+    def test_triagem_de_solicitacoes_e_restrita_ao_admin(self):
+        changelist_url = reverse('admin:gaap_solicitacaoexperimental_changelist')
+
+        self.assertEqual(self.client.get(changelist_url).status_code, 302)
+        self.client.force_login(self.admin_user)
+        self.assertEqual(self.client.get(changelist_url).status_code, 302)
+
+        self.admin_user.is_staff = True
+        self.admin_user.is_superuser = True
+        self.admin_user.save(update_fields=['is_staff', 'is_superuser'])
+        self.client.force_login(self.admin_user)
+        self.assertEqual(self.client.get(changelist_url).status_code, 200)

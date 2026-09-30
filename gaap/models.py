@@ -148,7 +148,7 @@ class Agendamento(models.Model):
         if self.inicio >= self.fim:
             raise ValidationError('A data final deve ser maior que a inicial.')
 
-        if self.status == self.STATUS_CONFIRMADO:
+        if self.status in {self.STATUS_PENDENTE, self.STATUS_CONFIRMADO}:
             self._validar_capacidade()
             self._validar_conflitos_aluno()
             self._validar_conflitos_profissional()
@@ -239,3 +239,46 @@ class RelatorioTreino(models.Model):
 
     def __str__(self):
         return self.titulo
+
+
+class SolicitacaoExperimental(models.Model):
+    STATUS_NOVA = 'NOVA'
+    STATUS_EM_CONTATO = 'EM_CONTATO'
+    STATUS_CONVERTIDA = 'CONVERTIDA'
+    STATUS_ENCERRADA = 'ENCERRADA'
+    STATUS_CHOICES = [
+        (STATUS_NOVA, 'Nova'),
+        (STATUS_EM_CONTATO, 'Em contato'),
+        (STATUS_CONVERTIDA, 'Convertida'),
+        (STATUS_ENCERRADA, 'Encerrada'),
+    ]
+    PERIODO_MANHA = 'MANHA'
+    PERIODO_TARDE = 'TARDE'
+    PERIODO_NOITE = 'NOITE'
+    PERIODO_FLEXIVEL = 'FLEXIVEL'
+    PERIODO_CHOICES = [
+        (PERIODO_MANHA, 'Manhã'),
+        (PERIODO_TARDE, 'Tarde'),
+        (PERIODO_NOITE, 'Noite'),
+        (PERIODO_FLEXIVEL, 'Flexível'),
+    ]
+
+    nome_responsavel = models.CharField(max_length=150)
+    nome_atleta = models.CharField(max_length=150)
+    idade_atleta = models.PositiveSmallIntegerField()
+    telefone = models.CharField(max_length=20)
+    email = models.EmailField(blank=True)
+    periodo_preferido = models.CharField(max_length=20, choices=PERIODO_CHOICES)
+    modalidade = models.CharField(max_length=20, default='TREINO', editable=False)
+    consentimento_contato = models.BooleanField(default=False)
+    consentimento_em = models.DateTimeField(null=True, blank=True, editable=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_NOVA)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['status', 'created_at'])]
+
+    def __str__(self):
+        return f'{self.nome_atleta} - {self.get_status_display()}'

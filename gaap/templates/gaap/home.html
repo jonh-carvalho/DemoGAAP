@@ -1,8 +1,232 @@
-{% extends 'gaap/base.html' %}
-{% block content %}
-<div class="card">
-    <h1>GAAP</h1>
-    <p>Dashboard administrativo para agenda, serviços, presença e relatórios.</p>
-    <p><a href="/login/">Entrar no sistema</a> | <a href="/api/docs/">Abrir documentação da API</a></p>
-</div>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Conheça o GAAP e solicite uma aula experimental de treino. Nossa equipe entrará em contato para conversar sobre o próximo passo.">
+    <title>GAAP | Movimento com propósito</title>
+    <style>
+        :root { --coal: #17211f; --forest: #20463b; --moss: #c4d86c; --paper: #f5f5ef; --white: #fff; --muted: #66716d; --rule: #d9dfd9; --coral: #cf694e; }
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body { margin: 0; color: var(--coal); background: var(--paper); font-family: "Aptos", "Segoe UI", sans-serif; line-height: 1.55; }
+        a { color: inherit; }
+        .topbar { position: absolute; z-index: 2; inset: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 1.2rem clamp(1.25rem, 5vw, 5rem); color: white; }
+        .wordmark { font-size: 1.25rem; font-weight: 850; letter-spacing: .12em; text-decoration: none; }
+        .wordmark span { color: var(--moss); }
+        .nav-links { display: flex; align-items: center; gap: clamp(.8rem, 2.2vw, 2rem); }
+        .nav-links a { color: white; font-size: .88rem; text-decoration: none; }
+        .nav-links a:hover { color: var(--moss); }
+        .nav-cta { padding: .55rem .85rem; border: 1px solid rgb(255 255 255 / 60%); }
+        .hero { position: relative; display: flex; min-height: min(760px, 92svh); align-items: flex-end; overflow: hidden; padding: 8rem clamp(1.25rem, 8vw, 8rem) 5.5rem; color: white; background: var(--coal); }
+        .hero-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 48%; animation: reveal 1.1s ease-out both; }
+        .hero::after { position: absolute; inset: 0; content: ""; background: linear-gradient(90deg, rgb(12 24 20 / 78%) 0%, rgb(12 24 20 / 39%) 57%, rgb(12 24 20 / 8%) 100%), linear-gradient(0deg, rgb(12 24 20 / 35%), transparent 48%); }
+        .hero-copy { position: relative; z-index: 1; max-width: 790px; animation: rise .75s .12s ease-out both; }
+        .eyebrow { display: flex; align-items: center; gap: .65rem; margin: 0 0 1rem; color: var(--moss); font-size: .75rem; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; }
+        .eyebrow::before { width: 28px; height: 2px; content: ""; background: currentColor; }
+        h1, h2, h3, p { margin-top: 0; }
+        .hero h1 { max-width: 760px; margin-bottom: 1rem; font-family: Georgia, "Times New Roman", serif; font-size: clamp(3rem, 7vw, 6.8rem); font-weight: 500; letter-spacing: 0; line-height: .98; }
+        .hero-copy > p:not(.eyebrow) { max-width: 540px; margin-bottom: 1.7rem; color: rgb(255 255 255 / 84%); font-size: 1.08rem; }
+        .button { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; padding: .75rem 1.15rem; border: 1px solid transparent; background: var(--moss); color: var(--coal); font-weight: 750; text-decoration: none; transition: background .18s ease, transform .18s ease; }
+        .button:hover { transform: translateY(-2px); background: #d4e582; }
+        .scroll-note { position: absolute; z-index: 1; right: clamp(1.25rem, 5vw, 5rem); bottom: 2rem; color: rgb(255 255 255 / 75%); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; writing-mode: vertical-rl; }
+        .section { padding: clamp(4rem, 8vw, 7rem) clamp(1.25rem, 9vw, 9rem); }
+        .intro { display: grid; grid-template-columns: minmax(220px, .75fr) minmax(0, 1.25fr); gap: clamp(2rem, 8vw, 8rem); align-items: start; }
+        .intro h2, .section-title { font-family: Georgia, "Times New Roman", serif; font-size: clamp(2.3rem, 4.8vw, 4.5rem); font-weight: 500; letter-spacing: 0; line-height: 1.02; }
+        .intro-copy { max-width: 690px; color: #44514b; font-size: 1.1rem; }
+        .intro-copy strong { color: var(--forest); }
+        .services { background: var(--forest); color: white; }
+        .services .eyebrow { color: var(--moss); }
+        .services-heading { display: flex; justify-content: space-between; gap: 2rem; align-items: end; margin-bottom: 2.4rem; }
+        .services-heading .section-title { max-width: 580px; margin: 0; }
+        .services-heading > p { max-width: 330px; margin: 0 0 .35rem; color: rgb(255 255 255 / 72%); }
+        .service-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid rgb(255 255 255 / 35%); }
+        .service-item { min-height: 185px; padding: 1.4rem 1.2rem 1.4rem 0; border-bottom: 1px solid rgb(255 255 255 / 35%); }
+        .service-item + .service-item { padding-left: 1.2rem; border-left: 1px solid rgb(255 255 255 / 25%); }
+        .service-index { display: block; margin-bottom: 2rem; color: var(--moss); font-size: .75rem; letter-spacing: .12em; }
+        .service-item h3 { margin-bottom: .4rem; font-family: Georgia, "Times New Roman", serif; font-size: 1.45rem; font-weight: 500; }
+        .service-item p { max-width: 230px; margin: 0; color: rgb(255 255 255 / 70%); font-size: .9rem; }
+        .steps { display: grid; grid-template-columns: .8fr 1.2fr; gap: 5rem; }
+        .steps .section-title { max-width: 430px; }
+        .steps-list { border-top: 1px solid var(--rule); }
+        .step { display: grid; grid-template-columns: 50px 1fr; gap: 1rem; padding: 1.25rem 0; border-bottom: 1px solid var(--rule); }
+        .step-number { color: var(--coral); font-size: .85rem; font-weight: 750; }
+        .step h3 { margin-bottom: .25rem; font-size: 1.05rem; }
+        .step p { margin: 0; color: var(--muted); }
+        .request { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: clamp(2rem, 8vw, 8rem); background: #e7e9df; }
+        .request-copy { position: sticky; top: 2rem; align-self: start; }
+        .request-copy .section-title { margin-bottom: 1rem; }
+        .request-copy > p:not(.eyebrow) { max-width: 410px; color: #55625b; }
+        .privacy-note { margin-top: 1.5rem; color: var(--muted); font-size: .82rem; }
+        .lead-form { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-content: start; }
+        .field { display: grid; gap: .35rem; }
+        .field-wide { grid-column: 1 / -1; }
+        .field label { font-size: .83rem; font-weight: 700; }
+        .field input, .field select { width: 100%; min-height: 48px; padding: .65rem .75rem; border: 1px solid #aebbb1; border-radius: 0; background: rgb(255 255 255 / 72%); color: var(--coal); font: inherit; }
+        .field input:focus, .field select:focus { outline: 2px solid var(--forest); outline-offset: 1px; }
+        .field-error { margin: 0; color: #a33f39; font-size: .82rem; }
+        .consent { display: flex; grid-column: 1 / -1; align-items: flex-start; gap: .65rem; color: #45514b; font-size: .83rem; }
+        .consent input { width: 18px; height: 18px; flex: 0 0 18px; margin: .1rem 0 0; accent-color: var(--forest); }
+        .form-submit { grid-column: 1 / -1; justify-self: start; min-width: 220px; border: 0; cursor: pointer; font: inherit; }
+        .form-errors { grid-column: 1 / -1; padding: .8rem 1rem; background: #f9e7df; color: #833c2d; }
+        .form-errors p:last-child { margin-bottom: 0; }
+        .honeypot { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+        .flash { padding: .9rem 1rem; border-left: 4px solid var(--forest); background: white; color: var(--coal); }
+        .footer { display: flex; justify-content: space-between; gap: 1.5rem; padding: 1.5rem clamp(1.25rem, 5vw, 5rem); background: var(--coal); color: rgb(255 255 255 / 75%); font-size: .82rem; }
+        .footer a { color: white; }
+        .footer p { margin: 0; }
+        @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes reveal { from { opacity: .55; transform: scale(1.025); } to { opacity: 1; transform: scale(1); } }
+        @media (max-width: 800px) {
+            .topbar { padding: 1rem 1.2rem; }
+            .nav-links { gap: .85rem; }
+            .nav-links a { font-size: .8rem; }
+            .nav-links a:nth-child(2) { display: none; }
+            .hero { min-height: 80svh; padding: 7rem 1.35rem 4.5rem; }
+            .hero h1 { font-size: clamp(2.65rem, 10.5vw, 4.25rem); }
+            .scroll-note { display: none; }
+            .intro, .steps, .request { grid-template-columns: 1fr; gap: 1.5rem; }
+            .services-heading { display: block; }
+            .services-heading > p { margin-top: 1rem; }
+            .service-list { grid-template-columns: 1fr 1fr; }
+            .service-item:nth-child(3) { padding-left: 0; border-left: 0; }
+            .request-copy { position: static; }
+        }
+        @media (max-width: 520px) {
+            .nav-links a:first-child { display: none; }
+            .nav-cta { padding: .45rem .6rem; }
+            .hero { min-height: 76svh; }
+            .hero-copy > p:not(.eyebrow) { font-size: .98rem; }
+            .section { padding: 3.75rem 1.25rem; }
+            .service-item { min-height: 165px; }
+            .lead-form { grid-template-columns: 1fr; }
+            .field-wide, .consent, .form-submit, .form-errors { grid-column: 1; }
+            .form-submit { width: 100%; }
+            .footer { display: block; }
+            .footer p + p { margin-top: .6rem; }
+        }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <a class="wordmark" href="#inicio" aria-label="GAAP, início">G<span>A</span>AP</a>
+        <nav class="nav-links" aria-label="Navegação principal">
+            <a href="#gaap">O GAAP</a>
+            <a href="#frentes">Frentes de atuação</a>
+            <a class="nav-cta" href="#experimental">Aula experimental</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero" id="inicio" aria-labelledby="hero-title">
+            <img class="hero-photo" src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&amp;fit=crop&amp;w=2200&amp;q=85" alt="Espaço de treinamento esportivo com equipamentos" fetchpriority="high">
+            <div class="hero-copy">
+                <p class="eyebrow">Gestão de Atletas de Alta Performance</p>
+                <h1 id="hero-title">Seu próximo passo começa em movimento.</h1>
+                <p>Treinamento e acompanhamento profissional para quem quer construir uma relação mais forte com o esporte.</p>
+                <a class="button" href="#experimental">Solicitar aula experimental <span aria-hidden="true">&nbsp;↗</span></a>
+            </div>
+            <span class="scroll-note" aria-hidden="true">Conheça o GAAP&nbsp; ↓</span>
+        </section>
+
+        <section class="section intro" id="gaap">
+            <div>
+                <p class="eyebrow">Uma jornada esportiva</p>
+                <h2>Performance é feita de constância.</h2>
+            </div>
+            <div class="intro-copy">
+                <p>O GAAP organiza o acompanhamento esportivo de atletas, famílias e profissionais em torno de uma rotina clara de cuidado e evolução.</p>
+                <p>O primeiro encontro é uma oportunidade para <strong>conhecer o espaço, conversar sobre seus objetivos e entender os próximos passos</strong>. A equipe combina o melhor horário depois de receber sua solicitação.</p>
+            </div>
+        </section>
+
+        <section class="section services" id="frentes">
+            <div class="services-heading">
+                <div>
+                    <p class="eyebrow">No seu ritmo, com suporte</p>
+                    <h2 class="section-title">Diferentes olhares. Uma jornada de evolução.</h2>
+                </div>
+                <p>Conheça as frentes de atendimento disponíveis no GAAP e converse com a equipe sobre o que faz sentido para você.</p>
+            </div>
+            <div class="service-list">
+                <article class="service-item"><span class="service-index">01 / MOVIMENTO</span><h3>Treinamento</h3><p>Encontre uma rotina de treino alinhada aos seus objetivos esportivos.</p></article>
+                <article class="service-item"><span class="service-index">02 / RECUPERAÇÃO</span><h3>Fisioterapia</h3><p>Atendimento profissional em fisioterapia para atletas.</p></article>
+                <article class="service-item"><span class="service-index">03 / EQUILÍBRIO</span><h3>Psicologia</h3><p>Suporte psicológico como parte do percurso esportivo.</p></article>
+                <article class="service-item"><span class="service-index">04 / NUTRIÇÃO</span><h3>Nutrição</h3><p>Acompanhamento nutricional voltado à prática esportiva.</p></article>
+            </div>
+        </section>
+
+        <section class="section steps">
+            <div>
+                <p class="eyebrow">Como funciona</p>
+                <h2 class="section-title">Um primeiro contato, sem compromisso de horário.</h2>
+            </div>
+            <div class="steps-list">
+                <article class="step"><span class="step-number">01</span><div><h3>Conte um pouco sobre você</h3><p>Preencha os dados e indique o melhor período para a equipe falar com você.</p></div></article>
+                <article class="step"><span class="step-number">02</span><div><h3>A equipe entra em contato</h3><p>Vamos conversar sobre seus objetivos e esclarecer suas dúvidas.</p></div></article>
+                <article class="step"><span class="step-number">03</span><div><h3>Combinamos a visita</h3><p>O horário da aula experimental é confirmado diretamente com você.</p></div></article>
+            </div>
+        </section>
+
+        <section class="section request" id="experimental">
+            <div class="request-copy">
+                <p class="eyebrow">Vamos conversar</p>
+                <h2 class="section-title">Solicite sua aula experimental.</h2>
+                <p>Deixe seus dados e a equipe GAAP entrará em contato para entender o que você procura e combinar os próximos passos.</p>
+                <p class="privacy-note">Este formulário registra um pedido de contato, não reserva um horário. Seus dados serão usados para responder à solicitação.</p>
+            </div>
+            <div>
+                {% if messages %}
+                    {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
+                {% endif %}
+                <form class="lead-form" method="post" action="{% url 'home' %}#experimental">
+                    {% csrf_token %}
+                    <div class="honeypot" aria-hidden="true">{{ form.website }}</div>
+                    {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+                    <div class="field">
+                        <label for="{{ form.nome_responsavel.id_for_label }}">{{ form.nome_responsavel.label }}</label>
+                        {{ form.nome_responsavel }}
+                        {% for error in form.nome_responsavel.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ form.telefone.id_for_label }}">{{ form.telefone.label }}</label>
+                        {{ form.telefone }}
+                        {% for error in form.telefone.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ form.nome_atleta.id_for_label }}">{{ form.nome_atleta.label }}</label>
+                        {{ form.nome_atleta }}
+                        {% for error in form.nome_atleta.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ form.idade_atleta.id_for_label }}">{{ form.idade_atleta.label }}</label>
+                        {{ form.idade_atleta }}
+                        {% for error in form.idade_atleta.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ form.periodo_preferido.id_for_label }}">{{ form.periodo_preferido.label }}</label>
+                        {{ form.periodo_preferido }}
+                        {% for error in form.periodo_preferido.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="field">
+                        <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+                        {{ form.email }}
+                        {% for error in form.email.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    <label class="consent" for="{{ form.consentimento_contato.id_for_label }}">
+                        {{ form.consentimento_contato }}
+                        <span>{{ form.consentimento_contato.label }}{% for error in form.consentimento_contato.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</span>
+                    </label>
+                    <button class="button form-submit" type="submit">Enviar solicitação <span aria-hidden="true">&nbsp;↗</span></button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p><strong>GAAP</strong> · Gestão de Atletas de Alta Performance</p>
+        <p><a href="/login/">Acesso da equipe</a></p>
+    </footer>
+</body>
+</html>

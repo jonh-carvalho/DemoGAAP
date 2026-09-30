@@ -67,6 +67,44 @@ Exemplo de payload:
 - `ADMIN`: gestão operacional completa
 - `TREINADOR`: agenda e relatórios de treino
 - `SAUDE`: agenda e atendimento de saúde
+- `ALUNO`: consulta os próprios agendamentos
+- `RESPONSAVEL`: consulta e agenda atendimentos dos alunos vinculados
+
+## Interface web
+
+Além da API REST, o projeto oferece páginas Django para acessar os dados pelo navegador. Depois de iniciar o servidor em `http://127.0.0.1:8000/`, estão disponíveis:
+
+- `/`: landing pública do GAAP com apresentação institucional e solicitação de aula experimental
+- `/login/`: autenticação da equipe usando as credenciais do sistema
+- `/dashboard/`: resumo de usuários, serviços, agendamentos e relatórios
+- `/servicos/`: consulta de serviços
+- `/agendamentos/`: consulta e gerenciamento de agendamentos
+- `/presencas/`: consulta de relatórios e registros relacionados
+- `/admin/`: administração e triagem das solicitações experimentais (acesso staff)
+
+### Aula experimental
+
+O formulário público solicita nome do responsável, nome e idade do atleta, WhatsApp, melhor período para contato e e-mail opcional. A modalidade experimental é Treino. É necessário autorizar o contato para enviar o pedido; a autorização e seu horário ficam registrados.
+
+O formulário cria uma solicitação de contato independente de `Agendamento`. Ele não reserva horário, não cria usuário nem cadastro de aluno e não expõe os pedidos por endpoint público. A equipe acompanha e atualiza o status no Django Admin. A página usa validação no servidor e um campo honeypot básico contra spam; não solicite nem inclua dados clínicos nesse formulário.
+
+Na landing, a fotografia é carregada de uma URL do Unsplash como imagem provisória de ambiente esportivo. Substitua-a por material institucional autorizado do GAAP antes de publicar o site.
+
+Na página `/agendamentos/`, usuários autorizados podem criar e editar agendamentos, pesquisar e filtrar a lista por data, serviço, profissional e status. O formulário sugere o horário final de acordo com a duração cadastrada no serviço. A ação **Cancelar** altera o status para `CANCELADO`, preservando o histórico em vez de excluir o registro.
+
+As alterações são enviadas aos endpoints REST usando o token JWT obtido no login da interface.
+
+## Dados de demonstração
+
+O comando `python manage.py seed_gaap` cria ou atualiza os dados iniciais sem duplicar os registros principais. Além do administrador e dos usuários originais, são criados estes profissionais de demonstração:
+
+| Usuário | Especialidade | Perfil |
+|---|---|---|
+| `profissional_educacao_fisica` | Educação Física | `TREINADOR` |
+| `fisioterapeuta` | Fisioterapia | `SAUDE` |
+| `psicologo` | Psicologia | `SAUDE` |
+
+O seed também disponibiliza os serviços `Treino`, `Fisioterapia`, `Nutricionista` (tipo `NUTRICAO`) e `Psicologia`. As contas criadas pelo seed usam inicialmente a senha `Senha123`; altere-a antes de qualquer uso fora do ambiente local de desenvolvimento.
 
 ## Endpoints principais
 
@@ -76,7 +114,11 @@ Exemplo de payload:
 - `GET /api/v1/servicos/`
 - `GET /api/v1/profissionais/`
 - `GET /api/v1/agendamentos/`
+- `POST /api/v1/agendamentos/` para criar
+- `PATCH /api/v1/agendamentos/{id}/` para editar parcialmente
+- `DELETE /api/v1/agendamentos/{id}/` para remover via API (a interface web oferece cancelamento lógico)
 - `GET /api/v1/bloqueios/`
+- `GET /api/docs/` para consultar a documentação OpenAPI/Swagger
 
 ## Regras de negócio implementadas
 
