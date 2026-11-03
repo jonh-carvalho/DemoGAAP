@@ -160,12 +160,12 @@
         <section class="section steps">
             <div>
                 <p class="eyebrow">Como funciona</p>
-                <h2 class="section-title">Um primeiro contato, sem compromisso de horário.</h2>
+                <h2 class="section-title">Escolha um horário para solicitar sua aula.</h2>
             </div>
             <div class="steps-list">
-                <article class="step"><span class="step-number">01</span><div><h3>Conte um pouco sobre você</h3><p>Preencha os dados e indique o melhor período para a equipe falar com você.</p></div></article>
-                <article class="step"><span class="step-number">02</span><div><h3>A equipe entra em contato</h3><p>Vamos conversar sobre seus objetivos e esclarecer suas dúvidas.</p></div></article>
-                <article class="step"><span class="step-number">03</span><div><h3>Combinamos a visita</h3><p>O horário da aula experimental é confirmado diretamente com você.</p></div></article>
+                <article class="step"><span class="step-number">01</span><div><h3>Escolha uma opção disponível</h3><p>Consulte os horários de treino e envie seus dados para solicitar uma opção.</p></div></article>
+                <article class="step"><span class="step-number">02</span><div><h3>A equipe confirma com você</h3><p>O horário fica reservado por até 24 horas enquanto a administração valida a solicitação.</p></div></article>
+                <article class="step"><span class="step-number">03</span><div><h3>A aula é confirmada</h3><p>Depois de conversar com você e revalidar a disponibilidade, a equipe confirma o agendamento.</p></div></article>
             </div>
         </section>
 
@@ -173,17 +173,37 @@
             <div class="request-copy">
                 <p class="eyebrow">Vamos conversar</p>
                 <h2 class="section-title">Solicite sua aula experimental.</h2>
-                <p>Deixe seus dados e a equipe GAAP entrará em contato para entender o que você procura e combinar os próximos passos.</p>
-                <p class="privacy-note">Este formulário registra um pedido de contato, não reserva um horário. Seus dados serão usados para responder à solicitação.</p>
+                <p>Consulte um horário disponível e envie a solicitação. A administração do GAAP confirma a opção com você antes de efetivar a aula.</p>
+                <p class="privacy-note">A opção fica reservada temporariamente por 24 horas, mas ainda não é uma confirmação. Se a equipe não confirmar nesse prazo, o horário volta a ficar disponível.</p>
             </div>
             <div>
                 {% if messages %}
                     {% for message in messages %}<p class="flash" role="status">{{ message }}</p>{% endfor %}
                 {% endif %}
+                <form method="get" action="{% url 'home' %}#experimental">
+                    <div class="field field-wide">
+                        <label for="{{ form.data_aula.id_for_label }}">{{ form.data_aula.label }}</label>
+                        <input id="{{ form.data_aula.id_for_label }}" type="date" name="data_aula" value="{{ form.data_aula.value|default:'' }}" required>
+                    </div>
+                    <button class="button" type="submit">Consultar horários</button>
+                </form>
+                {% if form.data_aula.value %}
+                    {% if form.available_slots %}
+                        <p>Selecione um dos horários disponíveis para solicitar:</p>
+                    {% else %}
+                        <p>Não há horários disponíveis nesta data. Consulte outro dia.</p>
+                    {% endif %}
+                {% endif %}
                 <form class="lead-form" method="post" action="{% url 'home' %}#experimental">
                     {% csrf_token %}
                     <div class="honeypot" aria-hidden="true">{{ form.website }}</div>
+                    <input type="hidden" name="data_aula" value="{{ form.data_aula.value|default:'' }}">
                     {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+                    <div class="field field-wide">
+                        <label for="{{ form.horario.id_for_label }}">{{ form.horario.label }}</label>
+                        {{ form.horario }}
+                        {% for error in form.horario.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+                    </div>
                     <div class="field">
                         <label for="{{ form.nome_responsavel.id_for_label }}">{{ form.nome_responsavel.label }}</label>
                         {{ form.nome_responsavel }}

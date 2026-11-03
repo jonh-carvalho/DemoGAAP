@@ -84,9 +84,13 @@ Além da API REST, o projeto oferece páginas Django para acessar os dados pelo 
 
 ### Aula experimental
 
-O formulário público solicita nome do responsável, nome e idade do atleta, WhatsApp, melhor período para contato e e-mail opcional. A modalidade experimental é Treino. É necessário autorizar o contato para enviar o pedido; a autorização e seu horário ficam registrados.
+O formulário público solicita nome do responsável, nome e idade do atleta, WhatsApp, melhor período para contato, e-mail opcional, data e horário disponíveis para uma aula de Treino. É necessário autorizar o contato para enviar o pedido; a autorização e seu horário ficam registrados.
 
-O formulário cria uma solicitação de contato independente de `Agendamento`. Ele não reserva horário, não cria usuário nem cadastro de aluno e não expõe os pedidos por endpoint público. A equipe acompanha e atualiza o status no Django Admin. A página usa validação no servidor e um campo honeypot básico contra spam; não solicite nem inclua dados clínicos nesse formulário.
+O envio cria uma solicitação independente de `Agendamento` e uma reserva temporária de 24 horas. O horário ainda não está confirmado: a administração deve contatar a família, confirmar o combinado e revalidar a disponibilidade no Django Admin antes de criar o agendamento confirmado. Se a reserva expirar, o horário volta a aparecer como disponível e a solicitação permanece para acompanhamento; a equipe deve combinar outra opção. No momento da confirmação, a equipe informa a data de nascimento do atleta, que é necessária para criar o cadastro de aluno. O fluxo cria os registros de responsável e aluno sem criar conta de usuário.
+
+Os horários são calculados a partir de `RegraDisponibilidade`, da duração e capacidade do serviço, dos agendamentos ativos, dos bloqueios da agenda e das reservas temporárias. Cadastre no Django Admin as regras reais de disponibilidade do serviço Treino, uma por profissional, dia da semana e intervalo, usando códigos como `MONDAY`, `TUESDAY`, `WEDNESDAY`, `THURSDAY`, `FRIDAY`, `SATURDAY` e `SUNDAY`. Sem regras cadastradas, nenhum horário será oferecido. A disponibilidade é revalidada ao exibir opções, ao receber uma solicitação e novamente na confirmação administrativa.
+
+Solicitações experimentais não são expostas por endpoint público. A página usa validação no servidor e um campo honeypot básico contra spam; não solicite nem inclua dados clínicos nesse formulário.
 
 Na landing, a fotografia é carregada de uma URL do Unsplash como imagem provisória de ambiente esportivo. Substitua-a por material institucional autorizado do GAAP antes de publicar o site.
 

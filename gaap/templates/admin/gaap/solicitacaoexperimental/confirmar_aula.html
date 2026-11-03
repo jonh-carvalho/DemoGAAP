@@ -1,0 +1,32 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div>
+    <h1>Confirmar aula experimental</h1>
+    <p><strong>Atleta:</strong> {{ original.nome_atleta }}</p>
+    <p><strong>Responsável:</strong> {{ original.nome_responsavel }}</p>
+    <p><strong>Profissional:</strong> {{ original.profissional_solicitado }}</p>
+    <p><strong>Horário solicitado:</strong> {{ original.inicio_solicitado|date:"d/m/Y H:i" }}</p>
+    <p>O horário será revalidado antes da criação do agendamento. Se a reserva de 24 horas expirou, será necessário combinar outro horário com a família.</p>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <div class="form-row">
+            {{ form.data_nascimento.errors }}
+            {{ form.data_nascimento.label_tag }}
+            {{ form.data_nascimento }}
+        </div>
+        <div class="form-row">
+            {{ form.contato_confirmado.errors }}
+            {{ form.contato_confirmado }}
+            {{ form.contato_confirmado.label_tag }}
+        </div>
+        <div class="submit-row">
+            <input type="submit" value="Confirmar e criar agendamento" class="default">
+            <a href="{{ cancel_url }}">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

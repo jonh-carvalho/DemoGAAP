@@ -2,7 +2,7 @@ from datetime import timezone as dt_timezone
 
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q
 from django.utils import timezone
 
@@ -79,14 +79,33 @@ class Profissional(models.Model):
 
 
 class RegraDisponibilidade(models.Model):
+    DIAS_SEMANA_CHOICES = (
+        ('MONDAY', 'Segunda-feira'),
+        ('TUESDAY', 'Terça-feira'),
+        ('WEDNESDAY', 'Quarta-feira'),
+        ('THURSDAY', 'Quinta-feira'),
+        ('FRIDAY', 'Sexta-feira'),
+        ('SATURDAY', 'Sábado'),
+        ('SUNDAY', 'Domingo'),
+    )
+
     servico = models.ForeignKey(Servico, on_delete=models.CASCADE, related_name='regras_disponibilidade')
     profissional = models.ForeignKey(Profissional, on_delete=models.CASCADE, related_name='regras_disponibilidade')
-    dia_semana = models.CharField(max_length=20)
+    dia_semana = models.CharField(max_length=20, choices=DIAS_SEMANA_CHOICES)
     hora_inicio = models.TimeField()
     hora_fim = models.TimeField()
 
     class Meta:
         unique_together = ('servico', 'profissional', 'dia_semana', 'hora_inicio', 'hora_fim')
+
+    def clean(self):
+        super().clean()
+        if (
+            self.hora_inicio is not None
+            and self.hora_fim is not None
+            and self.hora_inicio >= self.hora_fim
+        ):
+            raise ValidationError('O horário final deve ser posterior ao horário inicial.')
 
 
 class BloqueioAgenda(models.Model):
@@ -153,14 +172,26 @@ class Agendamento(models.Model):
             self._validar_conflitos_aluno()
             self._validar_conflitos_profissional()
             self._validar_bloqueios()
+            self._validar_reservas_experimentais()
 
     def _validar_bloqueios(self):
         bloqueios = BloqueioAgenda.objects.filter(
-            Q(servico=self.servico, profissional=self.profissional) | Q(servico=self.servico) | Q(profissional=self.profissional)
+            Q(servico__isnull=True) | Q(servico=self.servico),
+            Q(profissional__isnull=True) | Q(profissional=self.profissional),
         )
         for bloqueio in bloqueios:
             if self.inicio < bloqueio.fim and self.fim > bloqueio.inicio:
                 raise ValidationError('Não é possível confirmar agendamento em horário bloqueado.')
+
+    def _validar_reservas_experimentais(self):
+        reservas = ReservaHorarioExperimental.objects.filter(
+            profissional=self.profissional,
+            inicio__lt=self.fim,
+            fim__gt=self.inicio,
+            expira_em__gt=timezone.now(),
+        )
+        if reservas.exists():
+            raise ValidationError('O horário está reservado temporariamente para uma aula experimental.')
 
     def _validar_capacidade(self):
         agendamentos = Agendamento.objects.filter(
@@ -226,8 +257,11 @@ class Agendamento(models.Model):
         self.save(update_fields=['presenca', 'updated_at'])
 
     def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
+        with transaction.atomic():
+            if self.profissional_id is not None:
+                Profissional.objects.select_for_update().get(pk=self.profissional_id)
+            self.full_clean()
+            return super().save(*args, **kwargs)
 
 
 class RelatorioTreino(models.Model):
@@ -270,6 +304,21 @@ class SolicitacaoExperimental(models.Model):
     email = models.EmailField(blank=True)
     periodo_preferido = models.CharField(max_length=20, choices=PERIODO_CHOICES)
     modalidade = models.CharField(max_length=20, default='TREINO', editable=False)
+    profissional_solicitado = models.ForeignKey(
+        Profissional,
+        on_delete=models.PROTECT,
+        related_name='solicitacoes_experimentais',
+        null=True,
+        blank=True,
+    )
+    inicio_solicitado = models.DateTimeField(null=True, blank=True)
+    agendamento = models.OneToOneField(
+        Agendamento,
+        on_delete=models.PROTECT,
+        related_name='solicitacao_experimental',
+        null=True,
+        blank=True,
+    )
     consentimento_contato = models.BooleanField(default=False)
     consentimento_em = models.DateTimeField(null=True, blank=True, editable=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_NOVA)
@@ -282,3 +331,31 @@ class SolicitacaoExperimental(models.Model):
 
     def __str__(self):
         return f'{self.nome_atleta} - {self.get_status_display()}'
+
+
+class ReservaHorarioExperimental(models.Model):
+    solicitacao = models.OneToOneField(
+        SolicitacaoExperimental,
+        on_delete=models.CASCADE,
+        related_name='reserva_horario',
+    )
+    profissional = models.ForeignKey(
+        Profissional,
+        on_delete=models.CASCADE,
+        related_name='reservas_experimentais',
+    )
+    inicio = models.DateTimeField()
+    fim = models.DateTimeField()
+    expira_em = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['profissional', 'inicio'],
+                name='unique_experimental_hold_professional_start',
+            ),
+        ]
+        indexes = [models.Index(fields=['expira_em'])]
+
+    def __str__(self):
+        return f'{self.profissional} - {self.inicio}'

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -12,7 +12,9 @@ from gaap.models import (
     Aluno,
     Perfil,
     Profissional,
+    RegraDisponibilidade,
     RelatorioTreino,
+    ReservaHorarioExperimental,
     Responsavel,
     Servico,
     SolicitacaoExperimental,
@@ -250,12 +252,13 @@ class GaapDomainTests(TestCase):
         )
 
     def test_landing_publica_recebe_solicitacao_sem_criar_agendamento_ou_conta(self):
+        data_aula, horario = self._criar_horario_experimental()
         counts_before = (Aluno.objects.count(), Agendamento.objects.count(), User.objects.count())
-        response = self.client.get('/')
+        response = self.client.get('/', {'data_aula': data_aula})
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Solicitar aula experimental')
-        self.assertContains(response, 'Selecione um período')
+        self.assertContains(response, horario.split('|')[1][11:])
 
         response = self.client.post('/', {
             'nome_responsavel': 'Ana Silva',
@@ -264,20 +267,191 @@ class GaapDomainTests(TestCase):
             'telefone': '(21) 99999-1234',
             'email': 'ana@example.com',
             'periodo_preferido': 'TARDE',
+            'data_aula': data_aula,
+            'horario': horario,
             'consentimento_contato': 'on',
             'website': '',
-        })
+        }, follow=True)
 
-        self.assertRedirects(response, '/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'O horário ficará reservado por 24 horas')
         solicitacao = SolicitacaoExperimental.objects.get()
         self.assertEqual(solicitacao.telefone, '21999991234')
         self.assertEqual(solicitacao.modalidade, 'TREINO')
         self.assertEqual(solicitacao.status, SolicitacaoExperimental.STATUS_NOVA)
         self.assertIsNotNone(solicitacao.consentimento_em)
+        self.assertEqual(solicitacao.inicio_solicitado.date().isoformat(), data_aula)
+        self.assertEqual(ReservaHorarioExperimental.objects.filter(solicitacao=solicitacao).count(), 1)
         self.assertEqual(
             (Aluno.objects.count(), Agendamento.objects.count(), User.objects.count()),
             counts_before,
         )
+
+    def test_solicitacao_reserva_horario_temporariamente(self):
+        data_aula, horario = self._criar_horario_experimental()
+        payload = {
+            'nome_responsavel': 'Ana Silva',
+            'nome_atleta': 'Lucas Silva',
+            'idade_atleta': '16',
+            'telefone': '21999991234',
+            'periodo_preferido': 'TARDE',
+            'data_aula': data_aula,
+            'horario': horario,
+            'consentimento_contato': 'on',
+            'website': '',
+        }
+
+        self.assertEqual(self.client.post('/', payload).status_code, 302)
+        response = self.client.get('/', {'data_aula': data_aula})
+        self.assertNotContains(response, horario)
+        self.assertEqual(ReservaHorarioExperimental.objects.count(), 1)
+
+    def test_reserva_temporaria_impede_agendamento_operacional_no_mesmo_horario(self):
+        data_aula, horario = self._criar_horario_experimental()
+        self.client.post('/', {
+            'nome_responsavel': 'Ana Silva',
+            'nome_atleta': 'Lucas Silva',
+            'idade_atleta': '16',
+            'telefone': '21999991234',
+            'periodo_preferido': 'TARDE',
+            'data_aula': data_aula,
+            'horario': horario,
+            'consentimento_contato': 'on',
+            'website': '',
+        })
+        reserva = ReservaHorarioExperimental.objects.get()
+        agendamento = Agendamento(
+            aluno=self.aluno,
+            servico=self.servico,
+            profissional=self.profissional,
+            inicio=reserva.inicio,
+            fim=reserva.fim,
+            status=Agendamento.STATUS_CONFIRMADO,
+            created_by=self.admin_user,
+        )
+
+        with self.assertRaisesMessage(ValidationError, 'O horário está reservado temporariamente'):
+            agendamento.save()
+
+    def test_confirmacao_admin_cria_agendamento_apos_revalidar_horario(self):
+        data_aula, horario = self._criar_horario_experimental()
+        self.client.post('/', {
+            'nome_responsavel': 'Ana Silva',
+            'nome_atleta': 'Lucas Silva',
+            'idade_atleta': '16',
+            'telefone': '21999991234',
+            'periodo_preferido': 'TARDE',
+            'data_aula': data_aula,
+            'horario': horario,
+            'consentimento_contato': 'on',
+            'website': '',
+        })
+        solicitacao = SolicitacaoExperimental.objects.get()
+        self.admin_user.is_staff = True
+        self.admin_user.is_superuser = True
+        self.admin_user.save(update_fields=['is_staff', 'is_superuser'])
+        self.client.force_login(self.admin_user)
+
+        url = reverse('admin:gaap_solicitacaoexperimental_confirmar', args=[solicitacao.pk])
+        hoje = timezone.localdate()
+        response = self.client.post(url, {
+            'data_nascimento': hoje.replace(year=hoje.year - 16).isoformat(),
+            'contato_confirmado': 'on',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        solicitacao.refresh_from_db()
+        self.assertEqual(solicitacao.status, SolicitacaoExperimental.STATUS_CONVERTIDA)
+        self.assertEqual(solicitacao.agendamento.status, Agendamento.STATUS_CONFIRMADO)
+        self.assertEqual(solicitacao.agendamento.aluno.nome, 'Lucas Silva')
+        self.assertFalse(ReservaHorarioExperimental.objects.filter(solicitacao=solicitacao).exists())
+
+    def test_confirmacao_admin_recusa_reserva_expirada(self):
+        data_aula, horario = self._criar_horario_experimental()
+        self.client.post('/', {
+            'nome_responsavel': 'Ana Silva',
+            'nome_atleta': 'Lucas Silva',
+            'idade_atleta': '16',
+            'telefone': '21999991234',
+            'periodo_preferido': 'TARDE',
+            'data_aula': data_aula,
+            'horario': horario,
+            'consentimento_contato': 'on',
+            'website': '',
+        })
+        solicitacao = SolicitacaoExperimental.objects.get()
+        ReservaHorarioExperimental.objects.filter(solicitacao=solicitacao).update(
+            expira_em=timezone.now() - timedelta(seconds=1)
+        )
+        self.admin_user.is_staff = True
+        self.admin_user.is_superuser = True
+        self.admin_user.save(update_fields=['is_staff', 'is_superuser'])
+        self.client.force_login(self.admin_user)
+
+        hoje = timezone.localdate()
+        response = self.client.post(
+            reverse('admin:gaap_solicitacaoexperimental_confirmar', args=[solicitacao.pk]),
+            {
+                'data_nascimento': hoje.replace(year=hoje.year - 16).isoformat(),
+                'contato_confirmado': 'on',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'A reserva temporária expirou')
+        self.assertFalse(Agendamento.objects.exists())
+        self.assertEqual(
+            SolicitacaoExperimental.objects.get(pk=solicitacao.pk).status,
+            SolicitacaoExperimental.STATUS_NOVA,
+        )
+
+    def test_confirmacao_admin_recusa_horario_ocupado_apos_a_solicitacao(self):
+        data_aula, horario = self._criar_horario_experimental()
+        self.client.post('/', {
+            'nome_responsavel': 'Ana Silva',
+            'nome_atleta': 'Lucas Silva',
+            'idade_atleta': '16',
+            'telefone': '21999991234',
+            'periodo_preferido': 'TARDE',
+            'data_aula': data_aula,
+            'horario': horario,
+            'consentimento_contato': 'on',
+            'website': '',
+        })
+        solicitacao = SolicitacaoExperimental.objects.get()
+        reserva = ReservaHorarioExperimental.objects.get(solicitacao=solicitacao)
+        self.servico.capacidade_maxima = 1
+        self.servico.save(update_fields=['capacidade_maxima'])
+        Agendamento.objects.bulk_create([Agendamento(
+            aluno=self.aluno,
+            servico=self.servico,
+            profissional=self.profissional,
+            inicio=reserva.inicio,
+            fim=reserva.fim,
+            status=Agendamento.STATUS_CONFIRMADO,
+            created_by=self.admin_user,
+        )])
+        self.admin_user.is_staff = True
+        self.admin_user.is_superuser = True
+        self.admin_user.save(update_fields=['is_staff', 'is_superuser'])
+        self.client.force_login(self.admin_user)
+        hoje = timezone.localdate()
+
+        response = self.client.post(
+            reverse('admin:gaap_solicitacaoexperimental_confirmar', args=[solicitacao.pk]),
+            {
+                'data_nascimento': hoje.replace(year=hoje.year - 16).isoformat(),
+                'contato_confirmado': 'on',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'O horário não está mais disponível')
+        self.assertEqual(
+            SolicitacaoExperimental.objects.get(pk=solicitacao.pk).status,
+            SolicitacaoExperimental.STATUS_NOVA,
+        )
+        self.assertEqual(Agendamento.objects.count(), 1)
 
     def test_solicitacao_exige_consentimento_e_dados_validos(self):
         response = self.client.post('/', {
@@ -320,3 +494,16 @@ class GaapDomainTests(TestCase):
         self.admin_user.save(update_fields=['is_staff', 'is_superuser'])
         self.client.force_login(self.admin_user)
         self.assertEqual(self.client.get(changelist_url).status_code, 200)
+
+    def _criar_horario_experimental(self):
+        data_aula = timezone.localdate() + timedelta(days=1)
+        while data_aula.weekday() != 0:
+            data_aula += timedelta(days=1)
+        RegraDisponibilidade.objects.create(
+            servico=self.servico,
+            profissional=self.profissional,
+            dia_semana='MONDAY',
+            hora_inicio=time(9, 0),
+            hora_fim=time(11, 0),
+        )
+        return data_aula.isoformat(), f'{self.profissional.pk}|{data_aula.isoformat()}T09:00'

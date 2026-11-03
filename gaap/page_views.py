@@ -3,6 +3,7 @@ from datetime import datetime
 from urllib import error, request as urllib_request
 
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
@@ -53,14 +54,21 @@ def home(request):
     if request.method == 'POST':
         form = SolicitacaoExperimentalForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(
-                request,
-                'Recebemos sua solicitação. Nossa equipe entrará em contato para conversar sobre a aula experimental.',
-            )
-            return redirect('home')
+            try:
+                form.save()
+            except ValidationError as exc:
+                form.add_error('horario', exc)
+            else:
+                messages.success(
+                    request,
+                    'Recebemos sua solicitação. O horário ficará reservado por 24 horas, '
+                    'aguardando confirmação da equipe GAAP.',
+                )
+                return redirect('home')
     else:
-        form = SolicitacaoExperimentalForm()
+        form = SolicitacaoExperimentalForm(
+            initial={'data_aula': request.GET.get('data_aula') or None}
+        )
 
     return render(request, 'gaap/home.html', {'form': form})
 
