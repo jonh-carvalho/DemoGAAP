@@ -6,3 +6,4 @@ gunicorn>=23,<24
 whitenoise>=6,<7
 pytest==9.1.1
 pytest-django==4.14.0
+drf_spectacular
