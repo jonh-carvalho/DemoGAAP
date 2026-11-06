@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime
 from urllib import error, request as urllib_request
 
@@ -8,9 +9,6 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from .forms import SolicitacaoExperimentalForm
-
-
-API_BASE = 'http://127.0.0.1:8000/api/v1'
 
 
 def _token_from_session(request):
@@ -25,7 +23,8 @@ def _auth_headers(request):
 
 
 def _api_call(method, path, data=None, request=None):
-    url = f'{API_BASE}/{path.lstrip("/")}'
+    port = os.environ.get('PORT', '8000')
+    url = f'http://127.0.0.1:{port}/api/v1/{path.lstrip("/")}'
     headers = {'Content-Type': 'application/json'}
     if request is not None:
         headers.update(_auth_headers(request))

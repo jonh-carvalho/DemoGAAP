@@ -46,6 +46,39 @@ Backend do MVP do GAAP (Gestão de Atletas de Alta Performance) para apoiar agen
    python manage.py runserver
    ```
 
+## Teste temporário no Railway
+
+Esta configuração é somente para demonstração com dados fictícios. Não use dados reais: o SQLite fica em `/tmp/gaap.sqlite3` e pode ser perdido ao reiniciar, recriar ou atualizar o serviço. O banco versionado não é utilizado. Não configure réplicas, pois cada uma teria seu próprio banco. O SQLite também não é adequado para validar a concorrência dos agendamentos em produção.
+
+1. Verifique o conteúdo de `db.sqlite3` antes de enviar o repositório ao Railway: ele está versionado e pode ser incluído no código implantado, embora não seja o banco usado pela aplicação. Se contiver dados sensíveis, não faça o deploy até removê-los do repositório e tratar a exposição. Envie as alterações ao GitHub e crie um serviço no Railway a partir do repositório. Não adicione banco de dados nem volume.
+2. Em **Settings → Networking → Public Networking**, gere um domínio. Em **Variables**, configure:
+   - `DJANGO_SETTINGS_MODULE`: `gaap_backend.railway_settings`
+   - `SECRET_KEY`: uma chave aleatória exclusiva para este ambiente. Por exemplo, gere uma localmente com `python -c "import secrets; print(secrets.token_urlsafe(64))"` e copie o resultado para o Railway.
+   - `ALLOWED_HOSTS`: o domínio gerado, sem `https://` (por exemplo, `exemplo.up.railway.app`).
+   - `CSRF_TRUSTED_ORIGINS`: a URL HTTPS completa do domínio (por exemplo, `https://exemplo.up.railway.app`).
+
+   As configurações de teste usam `DEBUG=False` e não leem as sugestões de `DEBUG` ou `DATABASE_URL` do `.env.example`. Não publique a chave no repositório.
+3. Em **Settings → Deploy → Start Command**, configure:
+
+   ```sh
+   /bin/sh -c 'python manage.py migrate --noinput && python manage.py collectstatic --noinput && exec gunicorn gaap_backend.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4'
+   ```
+
+   As migrações rodam no próprio serviço, onde o SQLite é criado. As threads permitem que as páginas façam chamadas HTTP à API no mesmo serviço; esta configuração é destinada apenas a um teste com poucos acessos.
+4. Aplique as alterações e acompanhe os logs do deploy. Abra a URL gerada e verifique a página inicial e `/admin/`.
+5. Para testar com acesso administrativo, conecte-se ao serviço em execução usando a [CLI e o SSH do Railway](https://docs.railway.com/cli/ssh) e execute `python manage.py createsuperuser`. Escolha uma senha forte. Depois, no mesmo serviço, execute `python manage.py shell` e atribua o perfil necessário para acessar a API:
+
+   ```python
+   from django.contrib.auth import get_user_model
+   from gaap.models import Perfil
+   perfil, _ = Perfil.objects.get_or_create(codigo='ADMIN', defaults={'nome': 'Administrador'})
+   usuario = get_user_model().objects.get(username='NOME_DO_SUPERUSUARIO')
+   usuario.perfil = perfil
+   usuario.save(update_fields=['perfil'])
+   ```
+
+   Substitua `NOME_DO_SUPERUSUARIO` pelo nome escolhido. Crie os serviços, profissionais e regras de disponibilidade no Admin para testar aulas experimentais. Não execute `seed_gaap` em um ambiente público: ele define senhas de demonstração conhecidas. Quando o banco for perdido, será necessário refazer esses cadastros.
+
 ## Autenticação
 
 A API usa JWT com endpoints:

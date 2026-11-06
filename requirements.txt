@@ -1,5 +1,8 @@
 Django==6.1.1
 djangorestframework==3.18.1
 djangorestframework-simplejwt==5.5.1
+drf-spectacular==0.30.0
+gunicorn>=23,<24
+whitenoise>=6,<7
 pytest==9.1.1
 pytest-django==4.14.0

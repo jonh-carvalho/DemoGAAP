@@ -39,7 +39,33 @@ Se não houver horário adequado, consulte outra data. Não envie informações 
 7. O sistema verifica novamente a disponibilidade. Se estiver tudo válido, cria o responsável, o aluno e o agendamento com status **Confirmado**, vincula o agendamento à solicitação e a marca como **Convertida**.
 8. Avise o responsável de que a aula está confirmada. O agendamento poderá ser consultado nas telas operacionais da equipe, como `/agendamentos/` e `/dashboard/`.
 
-## 4. Se não for possível confirmar
+## 4. Integração pela API — equipe
+
+A API permite criar um agendamento diretamente:
+
+- **Endpoint:** `POST /api/v1/agendamentos/`
+- **Autenticação:** requer um token JWT de acesso no cabeçalho HTTP, usando o esquema Bearer. Obtenha o token em `POST /api/v1/auth/token/`, com `username` e `password` no corpo JSON.
+- **Content-Type:** `application/json`
+
+Exemplo de corpo para criar um agendamento confirmado de aula experimental (substitua os IDs e horários pelos valores reais):
+
+```json
+{
+  "aluno_id": 12,
+  "servico_id": 3,
+  "profissional_id": 5,
+  "inicio": "2026-11-10T14:00:00-03:00",
+  "fim": "2026-11-10T15:00:00-03:00",
+  "status": "CONFIRMADO",
+  "observacoes": "Aula experimental confirmada pela equipe GAAP."
+}
+```
+
+`aluno_id`, `servico_id` e `profissional_id` devem apontar para registros existentes; o serviço deve ser o serviço Treino. Os horários devem estar no formato ISO 8601 e o fim deve ser posterior ao início. A API responde com o agendamento criado.
+
+**Importante:** essa rota cria o agendamento diretamente; ela não cria uma solicitação experimental nem a reserva temporária de 24 horas. Para seguir o fluxo deste roteiro — incluindo contato com a família, validação da reserva e vínculo com a solicitação — use **Confirmar aula e criar agendamento** no Admin. O formulário público é enviado por `POST /` como dados de formulário e não aceita esse JSON.
+
+## 5. Se não for possível confirmar
 
 - **Reserva expirada:** o horário volta a aparecer como disponível, mas a solicitação continua no Admin. Não confirme o horário antigo; converse com a família e peça que escolha outra opção disponível.
 - **Horário ocupado ou bloqueado:** a revalidação impede a confirmação. Combine outro horário e solicite uma nova escolha.
